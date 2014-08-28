@@ -246,4 +246,20 @@ helpers.findNearestTeamMember = function(gameData) {
   return pathInfoObject.direction;
 };
 
+/////////////////////////////////////////
+// MY SHIT
+/////////////////////////////////////////
+
+helpers.aroundMe = function(gameData, directions) {
+    var aroundMe = [];
+
+    var myHero = gameData.activeHero;
+
+    for (var i = 0; i < directions.length; i++) {
+        aroundMe.push(helpers.getTileNearby(gameData.board, myHero.distanceFromTop, myHero.distanceFromLeft, directions[i]));
+    }
+
+    return aroundMe;
+}
+
 module.exports = helpers;

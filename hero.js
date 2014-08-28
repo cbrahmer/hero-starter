@@ -138,19 +138,141 @@
 //   return helpers.findNearestHealthWell(gameData);
 // }
 
-var move = function(gameData, helpers) {
-    // cheating?
-    gameData.activeHero.health = 100;
+var lastDirection = 0;
 
-    // Unwise assassin
+// The "Dodgy Fellow" ... always moving towards safety
+var move = function(gameData, helpers) {
+    var myMove = 'Stay';
+
+    // settings
+    var allowMineJacking = false;
+    var allowGraveJacking = false;
+    var healthThreshold = 50;
+    var diamondMineHealthThreshold = 60;
+    var minHealthThreshold = 30;
+
+    var directions = [];
+    directions.push('North');
+    directions.push('East');
+    directions.push('South');
+    directions.push('West');
+
     var myHero = gameData.activeHero;
 
-    if (myHero.health < 30) {
-        return helpers.findNearestHealthWell(gameData);
+    // aroundMe[X] will return false if you can't move there
+    var aroundMe = helpers.aroundMe(gameData, directions);
+
+    ///////////////////////////////////////
+    // find the safest move
+    ///////////////////////////////////////
+    var unoccupiedMove = '';
+    var diamondMove = '';
+    var healthWellMove = '';
+    var weakestEnemyMove = '';
+    var isStrongerEnemyAround = false;
+    var roamMoves = [];
+
+    // try to find DiamondMine space
+    for(var i = 0; i < aroundMe.length; i++) {
+        var tile = aroundMe[i];
+
+        if (tile !== false) {
+            // try to find Unoccupied space
+            if (tile.type === 'Unoccupied') {
+                if (allowGraveJacking === true || tile.subType !== 'Bones') {
+                    unoccupiedMove = directions[i];
+                    roamMoves.push(i);
+                }
+            }
+
+            // try to find DiamondMine space
+            if (tile.type === 'DiamondMine' && myHero.health >= diamondMineHealthThreshold) {
+                if (allowMineJacking === true || tile.owner == undefined)
+                    diamondMove = directions[i];
+            }
+
+            // try to find HealthWell move
+            if (tile.type === 'HealthWell' && myHero.health <= healthThreshold) {
+                healthWellMove = directions[i];
+            }
+
+            var lowestEnemyHealth = 100;
+            var lowestEnemyIndex = -1;
+
+            // try to find weakest enemy
+            if (tile.type === 'Hero' && tile.subType !== myHero.subType) {
+                // make sure they have lower health than me!
+                if (tile.health < lowestEnemyHealth && tile.health < myHero.health) {
+                    lowestEnemyIndex = i;
+                }
+
+                if (tile.health > myHero.health) {
+                    isStrongerEnemyAround = true;
+                }
+            }
+
+            if (lowestEnemyIndex > -1) {
+                weakestEnemyMove = directions[lowestEnemyIndex];
+            }
+        }
     }
+
+    ///////////////////////////////////
+    // I like to move it, move it
+    ///////////////////////////////////
+    if (myHero.health <= minHealthThreshold) {
+        console.log('get health now!');
+
+        myMove = helpers.findNearestHealthWell(gameData);
+    }
+    else if (weakestEnemyMove !== '') {
+        console.log('weakestEnemyMove');
+
+        myMove = weakestEnemyMove;
+    }
+    // get outta there!
+    else if (isStrongerEnemyAround === true && unoccupiedMove !== '') {
+        console.log('get outta here: ' + unoccupiedMove);
+
+        myMove = unoccupiedMove;
+    }
+    else if (healthWellMove !== '') {
+        console.log('healthyWellMove');
+
+        myMove = healthWellMove;
+    }
+    else if (diamondMove !== '') {
+        console.log('diamondMove');
+
+        myMove = diamondMove;
+    }
+//    else if (unoccupiedMove !== '') {
+//        myMove = unoccupiedMove;
+//    }
     else {
-        return helpers.findNearestEnemy(gameData);
+        if (lastDirection === 4) {
+            lastDirection = 0;
+        }
+
+        if (aroundMe[lastDirection] !== false) {
+            console.log('roaming: ' + directions[lastDirection]);
+            myMove = directions[lastDirection];
+        }
+        else {
+            lastDirection++;
+        }
     }
+//    // roam the board randomly
+//    else {
+//        if (roamMoves.length > 0) {
+//            myMove = directions[Math.floor(Math.random()*roamMoves.length)];
+//        }
+//    }
+
+    console.log('health: ' + myHero.health);
+    console.log('diamonds: ' + myHero.diamondsEarned);
+
+    return myMove;
 };
 
 // Export the move function here
